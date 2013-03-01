@@ -1,7 +1,6 @@
 require 'net/http'
-require 'digest/md5'
 require 'json'
-require 'uuid'
+require 'securerandom'
 
 module Hue
 
@@ -15,7 +14,7 @@ module Hue
   end
 
   def self.one_time_uuid
-    Digest::MD5.hexdigest(UUID.generate)
+    SecureRandom.hex(16)
   end
 
   def self.register_default
