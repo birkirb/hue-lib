@@ -92,7 +92,7 @@ def mock_bridge_config_path
   Hue::Config::Bridge.stubs(:file_path).returns(TEST_CONFIG_BRIDGE_PATH)
 end
 
-# HUE - UDP
+# HUE - DISCOVERY
 
 TEST_UDP_BRIDGE_UUID = '09230030-4c1e-0130-8d83-0018de9ecdd0'
 TEST_UDP_BRIDGE_HOSTNAME = 'upd-host'
@@ -120,6 +120,11 @@ def mock_udp_no_reply
   UDPSocket.stubs(:new).returns(socket)
 end
 
+def mock_nupnp_empty_reply
+  stub_request(:get, "https://www.meethue.com/api/nupnp").
+    with(:headers => {'Accept'=>'*/*', 'Accept-Encoding'=>'gzip;q=1.0,deflate;q=0.6,identity;q=0.3', 'Host'=>'www.meethue.com', 'User-Agent'=>'Ruby'}).
+    to_return(:status => 200, :body => "", :headers => {})
+end
 
 # BRIDGE - API CALLS
 
@@ -176,4 +181,8 @@ def with_fake_delete(named, delete_reply = 'delete_success')
     yield
     stub.should have_been_requested
   end
+end
+
+def mock_socket_hostname
+  Socket.stubs(:gethostname).returns("hostname")
 end

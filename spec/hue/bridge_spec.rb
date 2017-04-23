@@ -62,7 +62,8 @@ describe Hue::Bridge do
     bridge = described_class.new(new_id, TEST_BRIDGE_URI)
 
     it 'should allow registering the new config' do
-      with_fake_post(nil, {:username => new_id, :devicetype => Hue.device_type})
+      mock_socket_hostname
+      with_fake_post(nil, {:devicetype => "hue-lib@hostname"})
       bridge.register
     end
   end

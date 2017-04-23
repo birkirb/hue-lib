@@ -53,9 +53,17 @@ module Hue
     #   ids.each{|x| remove_schedule x}
     # end
 
+    def self.register(bridge_uri)
+      instance = self.new("", bridge_uri)
+      instance.register
+      instance
+    end
+
     def register
-      create(URI.parse(bridge_uri),
-             {"username" => application_id, "devicetype" => Hue.device_type})
+      response = create(URI.parse(bridge_uri), {"devicetype" => "#{Hue.device_type}@#{Socket.gethostname}"})
+      if response.first.has_key?('success')
+        @application_id = response.first['success']['username']
+      end
     end
 
     def unregister

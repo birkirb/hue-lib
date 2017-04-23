@@ -6,7 +6,6 @@ module Hue
     class NotFound < Hue::Error; end;
 
     class Abstract
-
       public
 
       attr_reader :path, :name
@@ -64,7 +63,7 @@ module Hue
 
       def self.read_file(config_file)
         begin
-          yaml = YAML.load_file(config_file)
+          YAML.load_file(config_file)
         rescue => err
           raise Error.new("Failed to read configuration file", err)
         end

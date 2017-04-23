@@ -38,6 +38,7 @@ describe Hue do
   context 'when attempting discover without a bridge on the network' do
     before(:each) do
       mock_udp_no_reply
+      mock_nupnp_empty_reply
     end
 
     it 'should return an empty list of bridges' do
@@ -73,7 +74,7 @@ describe Hue do
     it 'should allow a new default if one doesn\'t exist' do
       with_temp_config_path do
         with_fake_post(nil, {}, 'post_success', TEST_UDP_BRIDGE_URI)
-        with_stdout(/Registering app...(.*)$/) do
+        with_stdout(/Registering new app...$/) do
           described_class.register_default
         end
       end

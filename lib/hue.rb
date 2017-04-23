@@ -5,7 +5,7 @@ require 'securerandom'
 module Hue
 
   DEVICE_TYPE = 'hue-lib'
-  DEFAULT_UDP_TIMEOUT = 2
+  DEFAULT_UDP_TIMEOUT = 5
   ERROR_DEFAULT_EXISTS = 'Default application already registered.'
   ERROR_NO_BRIDGE_FOUND = 'No bridge found.'
 
@@ -22,11 +22,9 @@ module Hue
       raise Hue::Error.new(ERROR_DEFAULT_EXISTS)
     else
       bridge_config = register_bridges.values.first # Assuming one bridge for now
-      secret = Hue.one_time_uuid
-      app_config = Hue::Config::Application.new(bridge_config.id, secret)
-      puts "Registering app...(#{secret})"
-      instance = Hue::Bridge.new(app_config.id, bridge_config.uri)
-      instance.register
+      puts "Registering new app..."
+      instance = Hue::Bridge.register(bridge_config.uri)
+      app_config = Hue::Config::Application.new(bridge_config.id, instance.application_id)
       app_config.write
       instance
     end
@@ -51,14 +49,21 @@ module Hue
     true
   end
 
-  def self.discover(timeout = DEFAULT_UDP_TIMEOUT)
+  def self.discover
     bridges = Hash.new
+    udp_discover(bridges)
+    nupnp_discover(bridges)
+    bridges
+  end
+
+  def self.udp_discover(bridges)
+    Hue.logger.info("Bridge UDP Discovery")
     payload = <<-PAYLOAD
 M-SEARCH * HTTP/1.1
-HOST: 239.255.255.250:1900
-MAN: ssdp:discover
-MX: 10
 ST: ssdp:all
+MX: 10
+MAN: ssdp:discover
+HOST: 239.255.255.250:1900
     PAYLOAD
     broadcast_address = '239.255.255.250'
     port_number = 1900
@@ -66,7 +71,7 @@ ST: ssdp:all
     socket = UDPSocket.new(Socket::AF_INET)
     socket.send(payload, 0, broadcast_address, port_number)
 
-    Timeout.timeout(timeout, Hue::Error) do
+    Timeout.timeout(DEFAULT_UDP_TIMEOUT, Hue::Error) do
       loop do
         message, (address_family, port, hostname, ip_add) = socket.recvfrom(1024)
         if message =~ /IpBridge/ && location = /LOCATION: (.*)$/.match(message)
@@ -83,10 +88,28 @@ ST: ssdp:all
         end
       end
     end
-
-  rescue Hue::Error
+  rescue Hue::Error => err
+    Hue.logger.warn(err)
     logger.info("UDPSocket timed out.")
-    bridges
+  end
+
+  def self.nupnp_discover(bridges)
+    if bridges.size > 0
+      return
+    end
+
+    Hue.logger.info("Bridge NUPNP Discovery")
+    response = Net::HTTP.get_response(URI("https://www.meethue.com/api/nupnp"))
+    json = JSON.parse(response.body) rescue nil
+    if !json.nil?
+      json.each do |bridge|
+        uuid = bridge['id']
+        ip_add = bridge['internalipaddress']
+        if !uuid.nil? && !ip_add.nil?
+          bridges[uuid] = "http://#{ip_add}/api"
+        end
+      end
+    end
   end
 
   def self.register_bridges

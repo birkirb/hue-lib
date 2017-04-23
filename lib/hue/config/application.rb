@@ -15,7 +15,12 @@ module Hue
       end
 
       def self.named(name)
-        yaml = read_file(file_path)
+        begin
+          yaml = read_file(file_path)
+        rescue => err
+          Hue.logger.error(err)
+        end
+
         if yaml && named_yaml = yaml[name]
           new(named_yaml[STRING_BRIDGE_ID], named_yaml[STRING_ID], name)
         else
